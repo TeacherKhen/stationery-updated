@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MONSTER BINGO - PIXEL UNO EDITION</title>
+    <link href="https://fonts.googleapis.com/css2?family=Andika&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --team-a: #3498db;
+            --team-b: #9b59b6;
+            --glow-green: #2ecc71;
+            --monster-red: #ff4757;
+            --neon-blue: #00ffff;
+            --student-font: 'Andika', sans-serif;
+            --pixel-font: 'Press Start 2P', cursive;
+            --uno-red: #d32f2f;
+            --uno-blue: #1976d2;
+            --uno-yellow: #fbc02d;
+            --uno-green: #2e7d32;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: var(--student-font);
+            margin: 0;
+            padding: 10px;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #000 url('background4.gif') no-repeat center center fixed; 
+            background-size: cover;
+        }
+
+        #setup-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 10001;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+            color: white;
+        }
+
+        #instruction-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 10005;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            padding: 40px;
+        }
+
+        h1, .pixel-text {
+            font-family: var(--pixel-font);
+            text-shadow: 3px 3px #000;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        h1 { font-size: 1.8rem; color: var(--neon-blue); }
+
+        .setup-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 1100px;
+            margin-bottom: 120px;
+        }
+
+        .setup-card-input {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 15px;
+            border: 2px dashed #666;
+            text-align: center;
+        }
+
+        .img-preview {
+            width: 100%;
+            height: 80px;
+            background: #222;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            overflow: hidden;
+            font-size: 0.7rem;
+        }
+
+        .img-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        .setup-controls-bar {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: #111;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            border-top: 2px solid var(--neon-blue);
+        }
+
+        .top-nav {
+            position: absolute;
+            top: 15px;
+            width: 95%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .music-controls {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 8px 15px;
+            border-radius: 50px;
+            border: 2px solid var(--neon-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .music-btn, .setup-btn, .exit-btn {
+            font-family: var(--pixel-font);
+            font-size: 0.6rem;
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .music-btn { background: var(--neon-blue); color: #000; }
+        .exit-btn { background: var(--monster-red); color: white; }
+        .setup-btn { background: var(--glow-green); color: white; }
+
+        .container { display: flex; gap: 20px; width: 98%; height: 75vh; z-index: 10; margin-top: 40px; }
+        
+        .board { 
+            background: rgba(255, 255, 255, 0.85); 
+            border-radius: 25px; 
+            padding: 15px; 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            border: 5px solid #fff; 
+        }
+
+        .grid { 
+            display: grid; 
+            gap: 10px; 
+            flex-grow: 1;
+            grid-auto-rows: 1fr;
+            justify-content: center;
+            align-content: center;
+        }
+
+        .status-bar { 
+            background: #111; 
+            color: #fff; 
+            padding: 12px; 
+            border-radius: 15px; 
+            margin-bottom: 10px; 
+            display: flex; 
+            justify-content: center; 
+            gap: 10px;
+            font-family: var(--pixel-font); 
+            font-size: 0.7rem;
+            border: 1px solid var(--neon-blue);
+        }
+
+        /* --- CARD STYLES RE-VERIFIED --- */
+        .card { perspective: 1000px; cursor: pointer; width: 100%; height: 100%; min-height: 80px; position: relative; }
+        .card-inner { position: absolute; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+        .card.checked .card-inner, .card.monster-hit .card-inner { transform: rotateY(180deg); }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%; height: 100%;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            border: 6px solid white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .card-front { 
+            background: var(--uno-red); 
+            color: white; 
+            font-family: var(--pixel-font); 
+            font-size: 1.5rem; 
+            z-index: 2; 
+        }
+
+        .card-back { background: white; transform: rotateY(180deg); z-index: 1; padding: 5px; overflow: hidden; }
+        .card-back img { max-width: 90%; max-height: 70%; object-fit: contain; }
+
+        .card:nth-child(4n+1) .card-front { background: var(--uno-red); }
+        .card:nth-child(4n+2) .card-front { background: var(--uno-blue); }
+        .card:nth-child(4n+3) .card-front { background: var(--uno-yellow); }
+        .card:nth-child(4n+4) .card-front { background: var(--uno-green); }
+
+        #win-screen { 
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); 
+            z-index: 10002; color: gold; flex-direction: column; justify-content: center; align-items: center; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-nav">
+        <button class="exit-btn" id="exitGameBtn" onclick="exitToSetup()">🔙 EXIT GAME</button>
+        <div class="music-controls">
+            <button id="musicToggle" class="music-btn">MUSIC: ON</button>
+            <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="0.5">
+        </div>
+    </div>
+
+    <div id="instruction-overlay">
+        <h2 class="pixel-text" style="color: var(--uno-yellow);">HOW TO PLAY</h2>
+        <p style="font-size: 1.2rem; max-width: 600px;">Flip the cards and answer the questions correctly to score points!</p>
+        <p style="font-size: 1.2rem; color: var(--monster-red); max-width: 600px;">WATCH OUT: If you click the Monster, your team's points will return to ZERO!</p>
+        <button class="setup-btn" onclick="closeInstructions()">LET'S GO!</button>
+    </div>
+
+    <div id="setup-overlay">
+        <h1>GAME SETUP</h1>
+        <div style="margin-bottom: 15px; font-family: var(--pixel-font); font-size: 0.6rem;">
+            POINTS TO WIN: <input type="number" id="winScoreInput" value="5" style="width: 50px; font-family: var(--pixel-font);">
+        </div>
+        <div class="setup-grid" id="inputs-container"></div>
+        <div class="setup-controls-bar">
+            <button class="setup-btn" style="background: var(--monster-red);" onclick="clearAllData()">🗑️ CLEAR ALL</button>
+            <button class="setup-btn" style="background: #9b59b6;" onclick="exportGameData()">💾 SAVE FILE</button>
+            <button class="setup-btn" style="background: #3498db;" onclick="document.getElementById('fileInput').click()">📂 LOAD FILE</button>
+            <input type="file" id="fileInput" style="display:none" onchange="importGameData(event)">
+            <button class="setup-btn" style="background: var(--glow-green);" onclick="showInstructions()">🎮 PLAY NOW</button>
+        </div>
+    </div>
+
+    <div id="win-screen">
+        <h1 id="winner-text" style="font-size: 3rem;">TEAM WINS!</h1>
+        <button class="setup-btn" onclick="resetForRematch()">🎮 REMATCH</button>
+        <button class="setup-btn" style="margin-top:20px; background:var(--monster-red);" onclick="location.reload()">⚙️ SETTINGS</button>
+    </div>
+
+    <div class="container">
+        <div class="board">
+            <h2 class="pixel-text" style="color: var(--team-a);">TEAM A</h2>
+            <div class="status-bar">PTS: <span id="pts-a">0</span>/<span class="max-pts">0</span></div>
+            <div class="grid" id="grid-a"></div>
+        </div>
+        <div class="board">
+            <h2 class="pixel-text" style="color: var(--team-b);">TEAM B</h2>
+            <div class="status-bar">PTS: <span id="pts-b">0</span>/<span class="max-pts">0</span></div>
+            <div class="grid" id="grid-b"></div>
+        </div>
+    </div>
+
+    <audio id="bgMusic" loop><source src="music1.mp3" type="audio/mpeg"></audio>
+
+    <script>
+        const music = document.getElementById('bgMusic');
+        const musicBtn = document.getElementById('musicToggle');
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        let customCards = JSON.parse(localStorage.getItem('monsterBingoData')) || [];
+        let winScore = parseInt(localStorage.getItem('monsterWinScore')) || 5;
+
+        musicBtn.addEventListener('click', () => {
+            if (music.paused) { music.play(); musicBtn.innerText = "MUSIC: ON"; }
+            else { music.pause(); musicBtn.innerText = "MUSIC: OFF"; }
+        });
+
+        function initSetup() {
+            document.getElementById('winScoreInput').value = winScore;
+            const container = document.getElementById('inputs-container');
+            container.innerHTML = "";
+            for (let i = 0; i < 12; i++) {
+                const data = customCards[i] || { img: "", text: "" };
+                const div = document.createElement('div');
+                div.className = 'setup-card-input';
+                div.innerHTML = `
+                    <div class="img-preview">${data.img ? `<img src="${data.img}">` : 'PASTE IMAGE'}</div>
+                    <input type="text" placeholder="..." class="card-text" value="${data.text}" style="width:100%; text-align:center;">
+                    <input type="hidden" class="img-data" value="${data.img}">
+                `;
+                div.addEventListener('paste', handlePaste);
+                container.appendChild(div);
+            }
+        }
+
+        function handlePaste(e) {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let item of items) {
+                if (item.type.indexOf("image") !== -1) {
+                    const blob = item.getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        this.querySelector('.img-data').value = event.target.result;
+                        this.querySelector('.img-preview').innerHTML = `<img src="${event.target.result}">`;
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+        }
+
+        function clearAllData() {
+            if (confirm("Clear everything?")) {
+                localStorage.removeItem('monsterBingoData');
+                customCards = [];
+                initSetup();
+            }
+        }
+
+        function exitToSetup() {
+            if (confirm("Exit game?")) location.reload();
+        }
+
+        function showInstructions() {
+            customCards = getFormCards();
+            if (customCards.length === 0) return alert("Please add some images/words first!");
+            document.getElementById('instruction-overlay').style.display = 'flex';
+        }
+
+        function closeInstructions() {
+            document.getElementById('instruction-overlay').style.display = 'none';
+            finalizeSetup();
+        }
+
+        function getFormCards() {
+            const imgs = document.querySelectorAll('.img-data');
+            const texts = document.querySelectorAll('.card-text');
+            let cards = [];
+            imgs.forEach((img, i) => {
+                if (img.value.trim() !== "" || texts[i].value.trim() !== "") {
+                    cards.push({ img: img.value, text: texts[i].value });
+                }
+            });
+            return cards;
+        }
+
+        function finalizeSetup() {
+            winScore = parseInt(document.getElementById('winScoreInput').value) || 5;
+            localStorage.setItem('monsterBingoData', JSON.stringify(customCards));
+            localStorage.setItem('monsterWinScore', winScore);
+            document.getElementById('setup-overlay').style.display = 'none';
+            document.querySelectorAll('.max-pts').forEach(el => el.innerText = winScore);
+            startGame();
+        }
+
+        function exportGameData() {
+            const data = { cards: getFormCards(), winScore: document.getElementById('winScoreInput').value };
+            const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = "monster_bingo_save.json";
+            a.click();
+        }
+
+        function importGameData(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const data = JSON.parse(event.target.result);
+                customCards = data.cards || [];
+                winScore = data.winScore || 5;
+                initSetup();
+            };
+            reader.readAsText(file);
+        }
+
+        function playSfx(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            if (type === 'monster') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(110, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            } else if (type === 'win') {
+                osc.type = 'square';
+                [440, 554, 659, 880].forEach((f, i) => osc.frequency.setValueAtTime(f, audioCtx.currentTime + (i * 0.1)));
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.8);
+            } else {
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            }
+        }
+
+        function startGame() {
+            music.play().catch(() => {});
+            createBoard('a');
+            createBoard('b');
+        }
+
+        function resetForRematch() {
+            scores = { a: 0, b: 0 };
+            document.getElementById('pts-a').innerText = 0;
+            document.getElementById('pts-b').innerText = 0;
+            document.getElementById('win-screen').style.display = 'none';
+            createBoard('a');
+            createBoard('b');
+        }
+
+        let scores = { a: 0, b: 0 };
+
+        function createBoard(team) {
+            const grid = document.getElementById(`grid-${team}`);
+            grid.innerHTML = "";
+            const shuffled = [...customCards].sort(() => Math.random() - 0.5);
+            const cardCount = shuffled.length;
+            const monsterIdx = Math.floor(Math.random() * cardCount);
+
+            // Calculate columns dynamically
+            let cols = cardCount <= 6 ? 2 : (cardCount <= 9 ? 3 : 4);
+            grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+            shuffled.forEach((item, i) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-front"><span>${i + 1}</span></div>
+                        <div class="card-back">
+                            ${item.img ? `<img src="${item.img}">` : ''}
+                            <div style="font-weight:bold; font-size:0.7rem; text-align:center;">${item.text}</div>
+                        </div>
+                    </div>`;
+                
+                card.onclick = () => {
+                    if (card.classList.contains('checked') || card.classList.contains('monster-hit')) return;
+                    
+                    if (i === monsterIdx) {
+                        playSfx('monster');
+                        card.classList.add('monster-hit');
+                        card.querySelector('.card-back').innerHTML = "<span style='font-size:2rem'>👾</span><br><b style='font-size:0.6rem'>MONSTER!</b>";
+                        scores[team] = 0;
+                        document.getElementById(`pts-${team}`).innerText = 0;
+                        setTimeout(() => createBoard(team), 1000);
+                    } else {
+                        playSfx('correct');
+                        card.classList.add('checked');
+                        scores[team]++;
+                        document.getElementById(`pts-${team}`).innerText = scores[team];
+                        if (scores[team] >= winScore) {
+                            playSfx('win');
+                            document.getElementById('win-screen').style.display = 'flex';
+                            document.getElementById('winner-text').innerText = `TEAM ${team.toUpperCase()} WINS!`;
+                        }
+                    }
+                };
+                grid.appendChild(card);
+            });
+        }
+        initSetup();
+    </script>
+</body>
+</html>
