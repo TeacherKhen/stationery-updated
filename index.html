@@ -88,6 +88,7 @@
             border-radius: 15px;
             border: 2px dashed #666;
             text-align: center;
+            position: relative;
         }
 
         .img-preview {
@@ -104,6 +105,20 @@
         }
 
         .img-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        .del-img-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: var(--monster-red);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-size: 10px;
+            z-index: 5;
+        }
 
         .setup-controls-bar {
             position: fixed;
@@ -187,7 +202,6 @@
             border: 1px solid var(--neon-blue);
         }
 
-        /* --- CARD STYLES RE-VERIFIED --- */
         .card { perspective: 1000px; cursor: pointer; width: 100%; height: 100%; min-height: 80px; position: relative; }
         .card-inner { position: absolute; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
         .card.checked .card-inner, .card.monster-hit .card-inner { transform: rotateY(180deg); }
@@ -247,7 +261,7 @@
     <div id="setup-overlay">
         <h1>GAME SETUP</h1>
         <div style="margin-bottom: 15px; font-family: var(--pixel-font); font-size: 0.6rem;">
-            POINTS TO WIN: <input type="number" id="winScoreInput" value="5" style="width: 50px; font-family: var(--pixel-font);">
+            POINTS TO WIN: <input type="number" id="winScoreInput" value="5" style="width: 50px; font-family: var(--pixel-font);" onchange="saveCurrentSetup()">
         </div>
         <div class="setup-grid" id="inputs-container"></div>
         <div class="setup-controls-bar">
@@ -262,7 +276,7 @@
     <div id="win-screen">
         <h1 id="winner-text" style="font-size: 3rem;">TEAM WINS!</h1>
         <button class="setup-btn" onclick="resetForRematch()">🎮 REMATCH</button>
-        <button class="setup-btn" style="margin-top:20px; background:var(--monster-red);" onclick="location.reload()">⚙️ SETTINGS</button>
+        <button class="setup-btn" style="margin-top:20px; background:var(--monster-red);" onclick="exitToSetup()">⚙️ SETTINGS</button>
     </div>
 
     <div class="container">
@@ -293,6 +307,14 @@
             else { music.pause(); musicBtn.innerText = "MUSIC: OFF"; }
         });
 
+        // PERSISTENCE FIX: Save data whenever a change occurs
+        function saveCurrentSetup() {
+            customCards = getFormCards();
+            winScore = parseInt(document.getElementById('winScoreInput').value) || 5;
+            localStorage.setItem('monsterBingoData', JSON.stringify(customCards));
+            localStorage.setItem('monsterWinScore', winScore);
+        }
+
         function initSetup() {
             document.getElementById('winScoreInput').value = winScore;
             const container = document.getElementById('inputs-container');
@@ -302,13 +324,21 @@
                 const div = document.createElement('div');
                 div.className = 'setup-card-input';
                 div.innerHTML = `
+                    <button class="del-img-btn" onclick="deleteImage(this)">X</button>
                     <div class="img-preview">${data.img ? `<img src="${data.img}">` : 'PASTE IMAGE'}</div>
-                    <input type="text" placeholder="..." class="card-text" value="${data.text}" style="width:100%; text-align:center;">
+                    <input type="text" placeholder="..." class="card-text" value="${data.text}" style="width:100%; text-align:center;" oninput="saveCurrentSetup()">
                     <input type="hidden" class="img-data" value="${data.img}">
                 `;
                 div.addEventListener('paste', handlePaste);
                 container.appendChild(div);
             }
+        }
+
+        function deleteImage(btn) {
+            const parent = btn.parentElement;
+            parent.querySelector('.img-data').value = "";
+            parent.querySelector('.img-preview').innerHTML = "PASTE IMAGE";
+            saveCurrentSetup();
         }
 
         function handlePaste(e) {
@@ -320,6 +350,7 @@
                     reader.onload = (event) => {
                         this.querySelector('.img-data').value = event.target.result;
                         this.querySelector('.img-preview').innerHTML = `<img src="${event.target.result}">`;
+                        saveCurrentSetup();
                     };
                     reader.readAsDataURL(blob);
                 }
@@ -329,17 +360,22 @@
         function clearAllData() {
             if (confirm("Clear everything?")) {
                 localStorage.removeItem('monsterBingoData');
+                localStorage.removeItem('monsterWinScore');
                 customCards = [];
+                winScore = 5;
                 initSetup();
             }
         }
 
         function exitToSetup() {
-            if (confirm("Exit game?")) location.reload();
+            if (confirm("Exit game?")) {
+                saveCurrentSetup(); // Save one last time before reload
+                location.reload();
+            }
         }
 
         function showInstructions() {
-            customCards = getFormCards();
+            saveCurrentSetup();
             if (customCards.length === 0) return alert("Please add some images/words first!");
             document.getElementById('instruction-overlay').style.display = 'flex';
         }
@@ -362,16 +398,15 @@
         }
 
         function finalizeSetup() {
-            winScore = parseInt(document.getElementById('winScoreInput').value) || 5;
-            localStorage.setItem('monsterBingoData', JSON.stringify(customCards));
-            localStorage.setItem('monsterWinScore', winScore);
+            saveCurrentSetup();
             document.getElementById('setup-overlay').style.display = 'none';
             document.querySelectorAll('.max-pts').forEach(el => el.innerText = winScore);
             startGame();
         }
 
         function exportGameData() {
-            const data = { cards: getFormCards(), winScore: document.getElementById('winScoreInput').value };
+            saveCurrentSetup();
+            const data = { cards: customCards, winScore: winScore };
             const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
@@ -388,6 +423,7 @@
                 customCards = data.cards || [];
                 winScore = data.winScore || 5;
                 initSetup();
+                saveCurrentSetup();
             };
             reader.readAsText(file);
         }
@@ -438,7 +474,6 @@
             const cardCount = shuffled.length;
             const monsterIdx = Math.floor(Math.random() * cardCount);
 
-            // Calculate columns dynamically
             let cols = cardCount <= 6 ? 2 : (cardCount <= 9 ? 3 : 4);
             grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 
