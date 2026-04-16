@@ -297,6 +297,7 @@
     <script>
         const music = document.getElementById('bgMusic');
         const musicBtn = document.getElementById('musicToggle');
+        const volumeSlider = document.getElementById('volumeControl');
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
         let customCards = JSON.parse(localStorage.getItem('monsterBingoData')) || [];
@@ -307,7 +308,11 @@
             else { music.pause(); musicBtn.innerText = "MUSIC: OFF"; }
         });
 
-        // PERSISTENCE FIX: Save data whenever a change occurs
+        // FIXED: Added volume control functionality
+        volumeSlider.addEventListener('input', (e) => {
+            music.volume = e.target.value;
+        });
+
         function saveCurrentSetup() {
             customCards = getFormCards();
             winScore = parseInt(document.getElementById('winScoreInput').value) || 5;
@@ -369,7 +374,7 @@
 
         function exitToSetup() {
             if (confirm("Exit game?")) {
-                saveCurrentSetup(); // Save one last time before reload
+                saveCurrentSetup();
                 location.reload();
             }
         }
@@ -433,6 +438,10 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
+            
+            // Set SFX volume based on music slider
+            gain.gain.setValueAtTime(volumeSlider.value * 0.5, audioCtx.currentTime);
+
             if (type === 'monster') {
                 osc.type = 'sawtooth'; osc.frequency.setValueAtTime(110, audioCtx.currentTime);
                 gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
@@ -440,7 +449,6 @@
             } else if (type === 'win') {
                 osc.type = 'square';
                 [440, 554, 659, 880].forEach((f, i) => osc.frequency.setValueAtTime(f, audioCtx.currentTime + (i * 0.1)));
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.8);
             } else {
@@ -451,6 +459,7 @@
         }
 
         function startGame() {
+            music.volume = volumeSlider.value;
             music.play().catch(() => {});
             createBoard('a');
             createBoard('b');
