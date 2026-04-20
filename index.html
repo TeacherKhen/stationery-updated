@@ -308,7 +308,6 @@
             else { music.pause(); musicBtn.innerText = "MUSIC: OFF"; }
         });
 
-        // FIXED: Added volume control functionality
         volumeSlider.addEventListener('input', (e) => {
             music.volume = e.target.value;
         });
@@ -316,8 +315,12 @@
         function saveCurrentSetup() {
             customCards = getFormCards();
             winScore = parseInt(document.getElementById('winScoreInput').value) || 5;
-            localStorage.setItem('monsterBingoData', JSON.stringify(customCards));
-            localStorage.setItem('monsterWinScore', winScore);
+            try {
+                localStorage.setItem('monsterBingoData', JSON.stringify(customCards));
+                localStorage.setItem('monsterWinScore', winScore);
+            } catch (e) {
+                alert("Storage full! Try using smaller photos or clearing data.");
+            }
         }
 
         function initSetup() {
@@ -346,16 +349,35 @@
             saveCurrentSetup();
         }
 
+        // FIXED: Added Image Compression to save memory
         function handlePaste(e) {
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            const targetDiv = this;
             for (let item of items) {
                 if (item.type.indexOf("image") !== -1) {
                     const blob = item.getAsFile();
                     const reader = new FileReader();
                     reader.onload = (event) => {
-                        this.querySelector('.img-data').value = event.target.result;
-                        this.querySelector('.img-preview').innerHTML = `<img src="${event.target.result}">`;
-                        saveCurrentSetup();
+                        const img = new Image();
+                        img.onload = () => {
+                            // Create a small version of the image (300px max)
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 300;
+                            const scaleSize = MAX_WIDTH / img.width;
+                            canvas.width = MAX_WIDTH;
+                            canvas.height = img.height * scaleSize;
+
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            
+                            // Convert to a compressed JPEG to save massive space
+                            const compressedData = canvas.toDataURL('image/jpeg', 0.7);
+                            
+                            targetDiv.querySelector('.img-data').value = compressedData;
+                            targetDiv.querySelector('.img-preview').innerHTML = `<img src="${compressedData}">`;
+                            saveCurrentSetup();
+                        };
+                        img.src = event.target.result;
                     };
                     reader.readAsDataURL(blob);
                 }
@@ -438,8 +460,6 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
-            
-            // Set SFX volume based on music slider
             gain.gain.setValueAtTime(volumeSlider.value * 0.5, audioCtx.currentTime);
 
             if (type === 'monster') {
